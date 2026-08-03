@@ -5,9 +5,10 @@
 > 部署：GitHub Pages / Render / 任意静态托管（最后阶段再做）
 
 ## 当前状态
-- 计划文件已审批（`~/.claude/plans/14-idempotent-engelbart.md`），git 仓库已初始化并 push 到 `git@github.com:wen001-git/PageVoice.git`（commit 796a003）。
+- 计划文件已审批（`~/.claude/plans/14-idempotent-engelbart.md`），git 仓库已初始化并 push 到 `git@github.com:wen001-git/PageVoice.git`。
 - **当前策略（用户已确认）**：先把系统在本地实现并测试通过，部署留到本地跑通后再做。
-- 阶段 0 进行中：本地开发骨架。
+- **阶段 0 ✅ 完成**：项目骨架 + hash 路由 + 温柔护眼主题（浅/深双模式）。
+- **下一步**：阶段 1（PWA + 离线基础 + manifest + service worker）。
 
 ## 硬约束
 - 纯静态前端，不购买服务器
@@ -38,8 +39,8 @@
 
 ## 下一阶段 TODO
 - [x] git init + 推 plan 文件到 GitHub
-- [ ] **阶段 0**：本地 http server + index.html 骨架 + 主题
-- [ ] **阶段 1**：PWA + 离线基础（manifest + Apple meta + service worker + 路由）
+- [x] **阶段 0**：本地 http server + index.html 骨架 + 主题 + 路由（commit 1c57863）
+- [ ] **阶段 1**：PWA + 离线基础（manifest + Apple meta + service worker）
 - [ ] **阶段 2**：拍照 + 选图 + 压缩 + 自托管 Tesseract v5.1.1 OCR
 - [ ] **阶段 3**：句子切分 + 朗读核心（含 iOS 全部对策）
 - [ ] **阶段 4**：单词点击 + ECDICT 词典
@@ -47,6 +48,12 @@
 - [ ] **阶段 6**：打磨 + 错误处理
 - [ ] **阶段 7**：本地端到端测试（里程碑）
 - [ ] **阶段 8**（最后）：部署到 GitHub Pages 或 Render
+
+## 阶段 0 关键备忘
+- **路由 bug 教训**：`routes.get(path) || routes.get('/')` 让 404 永远不可达（`routes.get('/')` 总 truthy）。改成 `if (handler) ... else renderNotFound()`。
+- **ES Module 缓存陷阱**：调试时改 `js/*.js` 后浏览器仍用旧版。Playwright `page.goto(?nocache=N)` 或 `Ctrl+Shift+R` 强刷；不要只看 query string 不同。
+- **温柔护眼主题**：浅色 `#FBF7F0` 米黄 / 主色 `#7B9E89` 绿 / 强调 `#C18C5D` 暖橙；深色 `#1F1B16` / `#A8C4A2` / `#D4A574`。
+- **响应式断点**：`< 768px` 单列；`>= 768px` 居中 max-width 720px。
 
 ## 文件地图
 - `AGENTS.md`（本文件）— 状态索引 + 关键实现备忘
@@ -62,5 +69,6 @@
 | 2026-08-03 | 初始创建 |
 | 2026-08-03 | 整合 OCR/Tesseract.js 最终报告：钉死 v5.1.1、图片 ≤ 1600 px、wasm worker 定期销毁；订正 sentence-splitter 归属（azu/textlint-rule，非 wooorm） |
 | 2026-08-03 | git init + 推送计划文件到 git@github.com:wen001-git/PageVoice.git（commit 796a003） |
-| 2026-08-03 | 策略调整：先本地实现并测试通过，部署留到最后 |
+| 2026-08-03 | 策略调整：先本地实现并测试通过，部署留到最后（commit ec7c64b） |
+| 2026-08-03 | 阶段 0 完成：项目骨架 + hash 路由 + 温柔护眼主题（commit 1c57863）。修路由 bug：404 不可达因 `|| routes.get('/')` 兜底 |
 
