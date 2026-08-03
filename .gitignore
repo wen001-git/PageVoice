@@ -16,7 +16,12 @@ build/
 .cache/
 .tmp/
 
+# Playwright MCP 调试产物
+.playwright-mcp/
+
 # 临时 OCR 输出 / 测试图
 test-images/
 *.tmp.png
 *.tmp.jpg
+screenshot-*.png
+stage-*-*.png

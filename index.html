@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#fbf7f0" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1f1b16" media="(prefers-color-scheme: dark)">
+
+  <!-- iOS PWA meta（阶段 1 阶段会加 manifest，这里先放 Apple meta 占位） -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="PageVoice">
+  <meta name="format-detection" content="telephone=no">
+
+  <title>PageVoice · 英文拍照读书</title>
+
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <main id="app" aria-live="polite">
+    <!-- 由 js/main.js 渲染 -->
+    <div style="padding: 2rem; text-align: center; color: var(--text-muted);">加载中…</div>
+  </main>
+
+  <noscript>
+    <div style="padding: 2rem; text-align: center; color: #c18c5d;">
+      PageVoice 需要启用 JavaScript。请在浏览器设置中开启。
+    </div>
+  </noscript>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
