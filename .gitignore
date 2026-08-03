@@ -1,0 +1,22 @@
+# 编辑器 / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Node（万一以后引入）
+node_modules/
+npm-debug.log*
+yarn-error.log
+
+# 本地测试产物
+dist/
+build/
+.cache/
+.tmp/
+
+# 临时 OCR 输出 / 测试图
+test-images/
+*.tmp.png
+*.tmp.jpg
