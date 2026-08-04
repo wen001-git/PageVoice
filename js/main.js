@@ -3,7 +3,13 @@
 
 import { initRouter } from './router.js';
 import { mountHome } from './views/home.js';
+import { mountCapture } from './views/capture.js';
+import { mountEdit } from './views/edit.js';
+import { mountReader } from './views/reader.js';
+import { mountSettings } from './views/settings.js';
 import { applyTheme, getStoredTheme } from './utils/theme.js';
+import { preload as preloadOcr } from './services/ocr.js';
+import { preload as preloadDict } from './services/dictionary.js';
 
 // ---- 应用启动 ----
 async function bootstrap() {
@@ -28,17 +34,20 @@ async function bootstrap() {
   // 4. 启动 hash 路由
   initRouter({
     '/': mountHome,
-    // 阶段 2 起会陆续加：
-    // '/capture': mountCapture,
-    // '/edit': mountEdit,
-    // '/read': mountReader,
-    // '/settings': mountSettings,
+    '/capture': mountCapture,
+    '/edit': mountEdit,
+    '/read': mountReader,
+    '/settings': mountSettings,
   });
 
   // 5. 监听系统主题变化
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     if (getStoredTheme() === 'auto') applyTheme('auto');
   });
+
+  // 6. 后台预热 Tesseract worker（首次进入 capture 页时就不会卡）+ 词典
+  preloadOcr();
+  preloadDict();
 }
 
 bootstrap().catch((err) => {

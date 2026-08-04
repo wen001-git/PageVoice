@@ -28,8 +28,10 @@ export function navigate(path) {
 
 function handleRoute() {
   const raw = location.hash.replace(/^#/, '') || '/';
-  const [path, query] = raw.split('?');
-  const params = Object.fromEntries(new URLSearchParams(query || ''));
+  const queryIdx = raw.indexOf('?');
+  const path = queryIdx === -1 ? raw : raw.slice(0, queryIdx);
+  const query = queryIdx === -1 ? '' : raw.slice(queryIdx + 1);
+  const params = Object.fromEntries(new URLSearchParams(query));
 
   const handler = routes.get(path);
   if (handler) {
