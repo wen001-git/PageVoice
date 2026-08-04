@@ -35,18 +35,24 @@ export async function mountSettings(root, params) {
         <!-- 默认语速 -->
         <section style="background: var(--bg-elevated); border-radius: var(--radius-md); padding: 1rem;">
           <h3 style="font-size: var(--font-size-base); margin-bottom: 0.75rem;">默认语速</h3>
-          <div style="display: flex; gap: 0.5rem;">
-            ${[0.75, 1.0, 1.2].map((r) => `
-              <button class="btn ${settings.rate === r ? 'btn-accent' : 'btn-secondary'}" data-rate="${r}" style="flex: 1;">
+          <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4rem;">
+            ${[0.5, 0.6, 0.75, 1.0, 1.2].map((r) => `
+              <button class="btn ${settings.rate === r ? 'btn-accent' : 'btn-secondary'}" data-rate="${r}" style="font-size: 0.85rem; padding: 0.5em 0.2em;">
                 ${r}x
               </button>
             `).join('')}
           </div>
+          <p style="margin-top: 0.5rem; color: var(--text-subtle); font-size: 0.8rem;">
+            阅读页面有 5 档可调（0.5x / 0.6x / 0.75x / 1.0x / 1.2x）
+          </p>
         </section>
 
         <!-- 声音 -->
         <section style="background: var(--bg-elevated); border-radius: var(--radius-md); padding: 1rem;">
-          <h3 style="font-size: var(--font-size-base); margin-bottom: 0.75rem;">朗读声音</h3>
+          <h3 style="font-size: var(--font-size-base); margin-bottom: 0.5rem;">朗读声音</h3>
+          <p style="color: var(--text-subtle); font-size: 0.8rem; margin-bottom: 0.5rem;">
+            推荐（适合英语学习）：<strong>Samantha / Ava / Allison / Karen</strong>（女声美/英式），<strong>Daniel / Tom</strong>（男声）
+          </p>
           <select id="voice-select" style="
             width: 100%;
             padding: 0.6rem;
@@ -56,15 +62,28 @@ export async function mountSettings(root, params) {
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
           ">
-            ${voices.map((v) => `
+            ${voices.map((v) => {
+              // 推荐声音前面加 ⭐
+              const recommended = ['Samantha', 'Ava', 'Allison', 'Karen', 'Daniel', 'Tom'];
+              const star = recommended.includes(v.name) ? '⭐ ' : '';
+              return `
               <option value="${escapeAttr(v.voiceURI)}" ${settings.voiceURI === v.voiceURI ? 'selected' : ''}>
-                ${escapeHtml(v.name)} (${v.lang})${v.localService ? ' · 本机' : ''}
+                ${star}${escapeHtml(v.name)} (${v.lang})${v.localService ? ' · 本机' : ''}
               </option>
-            `).join('')}
+            `;}).join('')}
           </select>
           <button class="btn btn-secondary" data-action="preview-voice" style="margin-top: 0.5rem; width: 100%;">
-            🔊 试听
+            🔊 试听当前声音
           </button>
+        </section>
+
+        <!-- 跟读模式说明 -->
+        <section style="background: var(--bg-elevated); border-radius: var(--radius-md); padding: 1rem;">
+          <h3 style="font-size: var(--font-size-base); margin-bottom: 0.5rem;">👂 跟读模式</h3>
+          <p style="color: var(--text-muted); font-size: var(--font-size-sm); line-height: 1.5;">
+            在阅读页点控制条上的 👂 按钮开启。<br>
+            每句会重复读 <strong>3 次</strong>（2 次常速 + 1 次更慢），句与句之间留 <strong>1.2 秒</strong> 让孩子跟读。
+          </p>
         </section>
 
         <!-- 添加到主屏引导 -->

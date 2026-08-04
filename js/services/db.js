@@ -174,7 +174,7 @@ export async function deletePage(bookId, pageIndex) {
 export async function getSettings() {
   const db = await getDB();
   const s = await db.get('settings', 'global');
-  return s || { key: 'global', rate: 1.0, theme: 'auto', voiceURI: null };
+  return s || { key: 'global', rate: 0.6, theme: 'auto', voiceURI: null };
 }
 
 export async function saveSettings(patch) {

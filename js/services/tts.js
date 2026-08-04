@@ -17,16 +17,21 @@ export class TTS {
     this.state = 'idle';           // idle | loading | playing | paused | error
     this.sentences = [];           // 全部句子
     this.currentIdx = 0;           // 当前句索引
-    this.rate = 1.0;               // 0.75 / 1.0 / 1.2
+    this.rate = 0.6;               // 默认慢速（适合 14 岁学英语）
     this.voice = null;             // SpeechSynthesisVoice
     this.currentUtterance = null; // 挂闭包防 GC
     this.timeoutTimer = null;
     this.onChange = null;          // 回调：({state, currentIdx, total}) => void
+    this.followMode = false;       // 跟读模式：每句重复 3 次 + 停顿
     this._setupVisibilityHandler();
   }
 
   setOnChange(fn) {
     this.onChange = fn;
+  }
+
+  setFollowMode(on) {
+    this.followMode = !!on;
   }
 
   _emit() {
@@ -197,6 +202,13 @@ export class TTS {
     }
     const synth = window.speechSynthesis;
     const text = this.sentences[this.currentIdx];
+
+    // 跟读模式：每句发 3 次（2 + 1 慢速），中间停顿 0.5s
+    if (this.followMode) {
+      this._speakFollow(text, 0);
+      return;
+    }
+
     const u = new SpeechSynthesisUtterance(text);
     u.rate = this.rate;
     if (this.voice) u.voice = this.voice;
@@ -220,6 +232,58 @@ export class TTS {
       // iOS 上 'interrupted' / 'canceled' 是 cancel() 触发的，不要当错误
       if (e.error === 'interrupted' || e.error === 'canceled') return;
       console.warn('[TTS] error:', e.error);
+      this._clearTimeout();
+      this.currentUtterance = null;
+      this.state = 'error';
+      this._emit();
+    };
+
+    synth.speak(u);
+  }
+
+  /**
+   * 跟读模式：每句重复 3 次（2 次正常速度 + 1 次更慢），中间停顿 0.5s
+   * 适合学英语孩子模仿 + 听懂
+   */
+  _speakFollow(text, repeatIdx) {
+    const synth = window.speechSynthesis;
+    // 第 3 次用更慢速度
+    const localRate = repeatIdx === 2 ? Math.max(0.4, this.rate * 0.7) : this.rate;
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = localRate;
+    if (this.voice) u.voice = this.voice;
+    this.currentUtterance = u;
+    // 标记是哪次重复
+    u.__repeatIdx = repeatIdx;
+
+    u.onstart = () => {
+      this.state = 'playing';
+      this._armTimeout();
+      this._emit();
+    };
+    u.onend = () => {
+      this._clearTimeout();
+      this.currentUtterance = null;
+      if (this.state !== 'playing') return;
+      // 还有重复次数？
+      if (repeatIdx < 2) {
+        // 短暂停顿
+        setTimeout(() => {
+          if (this.state === 'playing') this._speakFollow(text, repeatIdx + 1);
+        }, 500);
+      } else {
+        // 句间停顿 1.2s 让孩子跟读
+        setTimeout(() => {
+          if (this.state === 'playing') {
+            this.currentIdx++;
+            this._speakCurrent();
+          }
+        }, 1200);
+      }
+    };
+    u.onerror = (e) => {
+      if (e.error === 'interrupted' || e.error === 'canceled') return;
+      console.warn('[TTS] follow error:', e.error);
       this._clearTimeout();
       this.currentUtterance = null;
       this.state = 'error';

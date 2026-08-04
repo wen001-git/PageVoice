@@ -64,7 +64,7 @@ export async function mountReader(root, params) {
       </div>
 
       <div id="control-bar" style="
-        padding: 1rem 1.25rem calc(1rem + var(--safe-bottom));
+        padding: 0.75rem 1.25rem calc(0.75rem + var(--safe-bottom));
         background: var(--bg-overlay);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
@@ -73,11 +73,12 @@ export async function mountReader(root, params) {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 0.5rem;
+        gap: 0.4rem;
         position: sticky;
         bottom: 0;
       ">
         <button class="ctrl" data-action="prev" aria-label="上一句">⏮</button>
+        <button class="ctrl ctrl-follow" data-action="follow" aria-label="跟读模式" title="跟读模式：每句重复 3 次">👂</button>
         <button class="ctrl ctrl-primary" data-action="play" aria-label="播放">▶</button>
         <button class="ctrl" data-action="next" aria-label="下一句">⏭</button>
         <button class="ctrl" data-action="repeat" aria-label="重复本句">🔁</button>
@@ -219,13 +220,25 @@ export async function mountReader(root, params) {
     <span class="sentence" data-idx="${i}">${renderSentenceWithWords(s)}</span>
   `).join('');
 
+  // 3.5) 加载设置（语速 / 声音）
+  try {
+    const { getSettings } = await import('../services/db.js');
+    const settings = await getSettings();
+    tts.setRate(settings.rate);
+    if (settings.voiceURI && tts.voice?.voiceURI !== settings.voiceURI) {
+      const v = voices.find((x) => x.voiceURI === settings.voiceURI);
+      if (v) tts.voice = v;
+    }
+  } catch {}
+
   // 4) TTS prepare
   await tts.prepare(text);
 
   // 5) 控制条事件
   const playBtn = root.querySelector('[data-action="play"]');
   const rateBtn = root.querySelector('[data-action="rate"]');
-  const rateValues = [0.75, 1.0, 1.2];
+  const followBtn = root.querySelector('[data-action="follow"]');
+  const rateValues = [0.5, 0.6, 0.75, 1.0, 1.2];
 
   function updatePlayIcon() {
     playBtn.textContent = tts.state === 'playing' ? '⏸' : '▶';
@@ -233,8 +246,15 @@ export async function mountReader(root, params) {
   function updateRateLabel() {
     rateBtn.textContent = `${tts.rate.toFixed(2).replace(/\.?0+$/, '')}x`;
   }
+  function updateFollowBtn() {
+    followBtn.classList.toggle('ctrl-follow-active', tts.followMode);
+    followBtn.style.background = tts.followMode ? 'var(--accent)' : '';
+    followBtn.style.color = tts.followMode ? '#fff' : '';
+    followBtn.title = tts.followMode ? '跟读模式已开启（点关闭）' : '跟读模式：每句重复 3 次';
+  }
   updatePlayIcon();
   updateRateLabel();
+  updateFollowBtn();
 
   tts.setOnChange(({ state, currentIdx }) => {
     updatePlayIcon();
@@ -244,7 +264,6 @@ export async function mountReader(root, params) {
     const cur = sentencesEl.querySelector(`.sentence[data-idx="${currentIdx}"]`);
     if (cur) {
       cur.classList.add('active');
-      // 滚到可视区
       cur.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   });
@@ -264,6 +283,15 @@ export async function mountReader(root, params) {
     const next = rateValues[(i + 1) % rateValues.length];
     tts.setRate(next);
     updateRateLabel();
+  });
+  followBtn.addEventListener('click', () => {
+    tts.setFollowMode(!tts.followMode);
+    updateFollowBtn();
+    // 跟读模式开启时如果有当前句在播，restart 让新设置生效
+    if (tts.followMode && tts.state === 'playing') {
+      tts.stop();
+      tts.play();
+    }
   });
 
   // 保存按钮：从 sessionStorage 拿图，建新书，写入第一页
