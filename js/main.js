@@ -11,22 +11,28 @@ import { applyTheme, getStoredTheme } from './utils/theme.js';
 import { preload as preloadOcr } from './services/ocr.js';
 import { preload as preloadDict } from './services/dictionary.js';
 
+// 计算当前部署的 base path
+// 例：https://wen001-git.github.io/PageVoice/js/main.js → '/PageVoice/'
+// 例：http://localhost:8000/js/main.js                  → '/'
+const BASE_PATH = new URL('.', import.meta.url).pathname.replace(/js\/$/, '');
+// 暴露给其他模块（Tesseract 资源、词典等需要绝对 URL 拼接 base）
+window.__BASE_PATH__ = BASE_PATH;
+
 // ---- 应用启动 ----
 async function bootstrap() {
   // 1. 应用主题（浅色 / 深色 / 跟随系统）
   applyTheme(getStoredTheme());
 
-  // 2. iOS PWA：申请持久化存储（仅在用户交互后才会被接受，但提前调用没坏处）
+  // 2. iOS PWA：申请持久化存储
   if (navigator.storage && navigator.storage.persist) {
     navigator.storage.persist().catch(() => { /* ignore */ });
   }
 
-  // 3. 注册 service worker（阶段 1 会建 sw.js，这里先防御性写好）
+  // 3. 注册 service worker（相对路径，兼容子路径部署）
   if ('serviceWorker' in navigator) {
     try {
-      await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.register(`${BASE_PATH}sw.js`);
     } catch (e) {
-      // sw.js 不存在也不致命（开发期）
       console.debug('Service worker 注册失败（开发期可能正常）:', e);
     }
   }
@@ -45,7 +51,7 @@ async function bootstrap() {
     if (getStoredTheme() === 'auto') applyTheme('auto');
   });
 
-  // 6. 后台预热 Tesseract worker（首次进入 capture 页时就不会卡）+ 词典
+  // 6. 后台预热 Tesseract worker + 词典
   preloadOcr();
   preloadDict();
 }
@@ -53,5 +59,11 @@ async function bootstrap() {
 bootstrap().catch((err) => {
   console.error('启动失败：', err);
   document.getElementById('app').innerHTML =
-    `<div style="padding: 2rem; color: #c18c5d;">应用启动失败：${err.message}</div>`;
+    `<div style="padding: 2rem; color: #c18c5d;">应用启动失败：${escapeHtml(err.message || String(err))}</div>`;
 });
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}

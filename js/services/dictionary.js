@@ -5,13 +5,16 @@
 let dict = null;
 let loadingPromise = null;
 
-const DICT_URL = '/data/ecdict-mini.json';
+function dictUrl() {
+  const base = window.__BASE_PATH__ || '/';
+  return `${base}data/ecdict-mini.json`;
+}
 
 async function load() {
   if (dict) return dict;
   if (loadingPromise) return loadingPromise;
   loadingPromise = (async () => {
-    const res = await fetch(DICT_URL);
+    const res = await fetch(dictUrl());
     if (!res.ok) throw new Error('词典加载失败：HTTP ' + res.status);
     dict = await res.json();
     return dict;

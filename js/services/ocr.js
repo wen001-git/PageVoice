@@ -1,10 +1,15 @@
 // services/ocr.js —— Tesseract.js v5.1.1 自托管 OCR
 // 资源全部从 /vendor/ 自托管，不依赖 cdn。
+// 路径用 window.__BASE_PATH__（main.js 计算）拼接，兼容 GitHub Pages 子路径。
 
 import { navigate } from '../router.js';
 
 // 全局只一个 worker（OCR 慢，重复创建 worker 耗资源 + wasm 堆只增不降）
 let workerPromise = null;
+
+function base() {
+  return window.__BASE_PATH__ || '/';
+}
 
 async function loadTesseractLib() {
   // 触发主库加载（副作用：window.Tesseract 出现）
@@ -18,10 +23,11 @@ async function getWorker(onProgress) {
   if (!workerPromise) {
     workerPromise = (async () => {
       const Tesseract = await loadTesseractLib();
+      const b = base();
       const worker = await Tesseract.createWorker('eng', 1, {
-        workerPath: '/vendor/tesseract/worker.min.js',
-        corePath: '/vendor/tesseract-core',  // 目录；Tesseract.js 自动选 4 个 wasm 变体里最佳的
-        langPath: '/vendor/tessdata',        // 目录（不带尾斜杠）
+        workerPath: `${b}vendor/tesseract/worker.min.js`,
+        corePath: `${b}vendor/tesseract-core`,  // 目录；Tesseract.js 自动选 4 个 wasm 变体里最佳的
+        langPath: `${b}vendor/tessdata`,        // 目录（不带尾斜杠）
         gzip: true,
         cacheMethod: 'readOnly',             // SW 接管缓存
         workerBlobURL: true,
@@ -44,7 +50,17 @@ async function getWorker(onProgress) {
  * @returns {Promise<{ text: string, words: Array<{ text: string, confidence: number, bbox: {x0,y0,x1,y1} }> }>}
  */
 export async function recognizeImage(blob, onProgress) {
-  const worker = await getWorker(onProgress);
+  let worker;
+  try {
+    worker = await getWorker(onProgress);
+  } catch (e) {
+    // Tesseract worker 创建失败通常是资源 404 / 网络 / wasm 加载
+    throw new Error(
+      'OCR 引擎加载失败：' +
+      (e?.message || e?.statusText || String(e) || '未知错误') +
+      (e?.status ? ` (HTTP ${e.status})` : '')
+    );
+  }
   const url = URL.createObjectURL(blob);
   try {
     const { data } = await worker.recognize(url);
@@ -56,6 +72,8 @@ export async function recognizeImage(blob, onProgress) {
         bbox: w.bbox,
       })),
     };
+  } catch (e) {
+    throw new Error('识别失败：' + (e?.message || e?.status || String(e) || '未知错误'));
   } finally {
     URL.revokeObjectURL(url);
   }

@@ -6,37 +6,44 @@
 // - Tesseract 资源（阶段 2 加入）：stale-while-revalidate
 // - 导航请求：网络优先，失败回退到 cache，确保离线可用
 // - 永远不要缓存 fetch() with method != GET / 跨域非 200 响应
+//
+// 部署兼容：GitHub Pages 子路径 /<repo>/ 下，用相对路径或基于 scope 拼接。
 
 const VERSION = 'pv-v1';
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
+
+// SHELL 文件：相对路径（不写绝对 / 开头），fetch 时由 SW scope 解析
 const SHELL_FILES = [
-  '/',
-  '/index.html',
-  '/manifest.webmanifest',
-  '/css/reset.css',
-  '/css/app.css',
-  '/js/main.js',
-  '/js/router.js',
-  '/js/utils/theme.js',
-  '/js/views/home.js',
-  '/js/views/capture.js',
-  '/js/views/edit.js',
-  '/js/views/reader.js',
-  '/js/views/settings.js',
-  '/js/services/image.js',
-  '/js/services/ocr.js',
-  '/js/services/sentences.js',
-  '/js/services/tts.js',
-  '/js/services/dictionary.js',
-  '/js/services/db.js',
-  '/data/ecdict-mini.json',
-  '/vendor/idb/idb.umd.js',
-  '/vendor/browser-image-compression/browser-image-compression.js',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/apple-touch-icon-180x180.png',
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './css/reset.css',
+  './css/app.css',
+  './js/main.js',
+  './js/router.js',
+  './js/utils/theme.js',
+  './js/views/home.js',
+  './js/views/capture.js',
+  './js/views/edit.js',
+  './js/views/reader.js',
+  './js/views/settings.js',
+  './js/services/image.js',
+  './js/services/ocr.js',
+  './js/services/sentences.js',
+  './js/services/tts.js',
+  './js/services/dictionary.js',
+  './js/services/db.js',
+  './data/ecdict-mini.json',
+  './vendor/idb/idb.umd.js',
+  './vendor/browser-image-compression/browser-image-compression.js',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/apple-touch-icon-180x180.png',
 ];
+
+// 文件名前缀（用于 fetch 拦截时识别 shell 资源）
+const SHELL_PREFIXES = ['./css/', './js/', './data/', './vendor/', './icons/', './manifest.webmanifest', './index.html'];
 
 // ===== 安装 =====
 self.addEventListener('install', (event) => {
@@ -82,7 +89,7 @@ self.addEventListener('fetch', (event) => {
       return;
     }
     // 应用 shell 文件：stale-while-revalidate（开发期更新友好；生产也能后台更新）
-    if (SHELL_FILES.includes(url.pathname)) {
+    if (isShellPath(url.pathname)) {
       event.respondWith(staleWhileRevalidate(req, SHELL_CACHE));
       return;
     }
@@ -101,20 +108,19 @@ self.addEventListener('fetch', (event) => {
   return;
 });
 
-// ===== 策略 =====
-
-async function cacheFirst(req) {
-  const cache = await caches.open(SHELL_CACHE);
-  const cached = await cache.match(req);
-  if (cached) return cached;
-  try {
-    const res = await fetch(req);
-    if (res.ok) cache.put(req, res.clone());
-    return res;
-  } catch (e) {
-    return new Response('离线 + 缓存未命中：' + req.url, { status: 503 });
+function isShellPath(pathname) {
+  // pathname 是绝对路径（/PageVoice/vendor/...），检查后缀
+  for (const prefix of SHELL_PREFIXES) {
+    if (prefix === './') continue;
+    const tail = prefix.slice(1); // '/css/' -> 'css/'
+    if (pathname.endsWith(tail) || pathname.includes(tail)) return true;
   }
+  // 根 + index.html
+  if (pathname.endsWith('/index.html')) return true;
+  return false;
 }
+
+// ===== 策略 =====
 
 async function networkFirst(req) {
   const cache = await caches.open(SHELL_CACHE);
@@ -123,10 +129,10 @@ async function networkFirst(req) {
     if (res.ok) cache.put(req, res.clone());
     return res;
   } catch (e) {
-    const cached = await cache.match(req);
+    // 离线时返回 index.html（SPA 路由兜底）
+    const cached = await cache.match(req) || await cache.match('./index.html');
     if (cached) return cached;
-    // 最后兜底：返回 index.html（SPA 路由）
-    return cache.match('/index.html') || cache.match('/');
+    return new Response('离线且未缓存', { status: 503 });
   }
 }
 
